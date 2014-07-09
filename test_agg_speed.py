@@ -10,6 +10,9 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import fastaxes as f
 
+import matplotlib.style as style
+#style.use('ggplot')
+
 POINTS = 500
 
 def vanilla(proj=None):
@@ -17,6 +20,19 @@ def vanilla(proj=None):
     ax = figure.add_subplot(1, 1, 1, projection=proj)
 
     scat = ax.scatter(numpy.arange(POINTS), numpy.sin(numpy.arange(POINTS)))
+
+    ax.set_yticklabels(['manny', 'moe', 'jack'])
+
+    return figure
+
+def labeled(proj=None):
+    figure = Figure(figsize=(6, 6), dpi=72, facecolor=(1, 1, 1), edgecolor=(0, 0, 0), tight_layout=True)
+    ax = figure.add_subplot(1, 1, 1, projection=proj)
+
+    scat = ax.scatter(numpy.arange(POINTS), numpy.sin(numpy.arange(POINTS)))
+    ax.set_xlabel('x axis')
+    ax.set_ylabel('x axis')
+    ax.set_title('gizmo')
 
     return figure
 
@@ -50,6 +66,17 @@ def tight(proj=None):
     ax = figure.add_subplot(1, 1, 1, projection=proj)
 
     scat = ax.scatter(numpy.arange(POINTS), numpy.sin(numpy.arange(POINTS)))
+
+    return figure
+
+def tightlog(proj=None):
+    figure = Figure(figsize=(6, 6), dpi=72, facecolor=(1, 1, 1), edgecolor=(0, 0, 0), tight_layout=True)
+    ax = figure.add_subplot(1, 1, 1, projection=proj)
+
+    x = numpy.array([float(i+2) for i in range(POINTS)])
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    scat = ax.scatter(x, numpy.log(x))
 
     return figure
 
@@ -113,13 +140,15 @@ def speed(func):
     f_canvas.print_to_buffer()
     s_canvas.print_to_buffer()
 
+    ITER=6
+
     start = time.time()
-    for i in range(25):
+    for i in range(ITER):
         s_canvas.print_to_buffer()
     s_time = time.time() - start
 
     start = time.time()
-    for i in range(25):
+    for i in range(ITER):
         f_canvas.print_to_buffer()
     f_time = time.time() - start
 
@@ -138,10 +167,12 @@ def main():
     print '{:<10s}:  {:>5s}({:>5s}) {:>5s}({:>5s})'.format('func', 'std', 'make', 'fast', 'make')
 
     speed(vanilla)
+    speed(labeled)
     speed(hexplot)
     speed(large_grid)
     speed(log)
-    #speed(tight)
+    speed(tight)
+    speed(tightlog)
     speed(manyticks)
     speed(tickless)
 
