@@ -108,7 +108,13 @@ def tickless(proj=None):
 def large_grid(proj=None):
     figure = Figure(figsize=(6, 6), dpi=72, facecolor=(1, 1, 1), edgecolor=(0, 0, 0))
 
-    axes = [[figure.add_subplot(20, 20, i*20+j+1) for i in range(20)] for j in range(20)]
+    axes = [figure.add_subplot(20, 20, i*20+j+1) for i in range(20) for j in range(20)]
+
+    for ax in axes:
+        ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+        ax.yaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+        ax.xaxis.set_major_locator(matplotlib.ticker.NullLocator())
+        ax.yaxis.set_major_locator(matplotlib.ticker.NullLocator())
 
     return figure
 

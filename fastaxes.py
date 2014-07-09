@@ -82,6 +82,13 @@ def tick_props(name, axes, major):
     return props
 
 class FastAxisMixin(object):
+    def reset_ticks(self):
+        self._lastNumMajorTicks = 0
+        self._lastNumMinorTicks = 0
+
+    def set_clip_path(self, clippath, transform=None):
+        pass
+
     def _construct_tick_group(self, props):
         tickline = mlines.Line2D(xdata=(), ydata=(),
                    color=props._color,
