@@ -1,13 +1,19 @@
 import numpy
 import matplotlib
 from matplotlib import rcParams
+import matplotlib.cbook as cbook
 import matplotlib.font_manager as font_manager
 import matplotlib.artist as martist
 import matplotlib.axes as maxes
 import matplotlib.axis as maxis
 import matplotlib.lines as mlines
+import matplotlib.path as mpath
+import matplotlib.patches as mpatches
 import matplotlib.text as mtext
 import matplotlib.ticker as mticker
+import matplotlib.transforms as mtransforms
+
+GRIDLINE_INTERPOLATION_STEPS = 180
 
 class Props(object):
     def __init__(self):
@@ -30,6 +36,14 @@ class Props(object):
 
 def tick_props(name, axes, major):
     props = Props()
+
+    if major and (rcParams['axes.grid.which'] in ('both','major')):
+        grid_on = rcParams['axes.grid']
+    elif (not major) and (rcParams['axes.grid.which'] in ('both','minor')):
+        grid_on = rcParams['axes.grid']
+    else :
+        grid_on = False
+    props._grid_on = grid_on
 
     if major:
         size = rcParams['%s.major.size' % name]
@@ -81,9 +95,12 @@ class FastAxisMixin(object):
 
     def iter_tick_groups(self):
         transfactory = self.axes.get_xaxis_transform if self.axis_name == 'x' else self.axes.get_yaxis_transform
+        view_low, view_high = tuple(sorted(self.get_view_interval()))
+        #print view_low, view_high
 
         # minor tick marks
-        locations = self.get_minor_locator()()
+        locations = numpy.array(self.get_minor_locator()())
+        locations = locations[(locations>=view_low) & (locations<=view_high)]
         if len(locations) > 0:
             ones = numpy.empty_like(locations)
             ones.fill(1.)
@@ -116,7 +133,8 @@ class FastAxisMixin(object):
             yield locations, [self._minor_tick1, self._minor_tick2], self._minor_tick_props, self.minor.formatter
 
         # major tick marks
-        locations = self.get_major_locator()()
+        locations = numpy.array(self.get_major_locator()())
+        locations = locations[(locations>=view_low) & (locations<=view_high)]
         if len(locations) > 0:
             ones = numpy.empty_like(locations)
             ones.fill(1.)
@@ -148,6 +166,49 @@ class FastAxisMixin(object):
 
             yield locations, [self._major_tick1, self._major_tick2], self._major_tick_props, self.major.formatter
 
+    def get_tightbbox(self, renderer):
+        """
+        Return a bounding box that encloses the axis. It only accounts
+        tick labels, axis label, and offsetText.
+        """
+        if not self.get_visible():
+            return
+
+        bb = []
+
+        for locations, tickbars, props, label_formatter in self.iter_tick_groups():
+            if label_formatter != None:
+                label_formatter.set_locs(locations)
+                for i, val in enumerate(locations):
+                    l = label_formatter(val, i)
+                    if l == '':
+                        continue
+                    t = self._construct_tick_label(i, props)
+                    f = t.set_y if self.axis_name == 'y' else t.set_x
+                    f(val)
+                    t.set_text(l)
+                    bb.append(t.get_window_extent(renderer))
+
+        self._update_label_position(bb, [])
+
+        self._update_offset_text_position(bb, [])
+        self.offsetText.set_text(self.major.formatter.get_offset())
+
+        for a in [self.label, self.offsetText]:
+            if a.get_visible():
+                bb.append(a.get_window_extent(renderer))
+
+        #bb.extend(ticklabelBoxes)
+        #bb.extend(ticklabelBoxes2)
+
+        #self.offsetText
+        bb = [b for b in bb if b.width != 0 or b.height != 0]
+        if bb:
+            _bbox = mtransforms.Bbox.union(bb)
+            return _bbox
+        else:
+            return None
+
     @martist.allow_rasterization
     def draw(self, renderer, *args, **kwargs):
         'Draw the axis lines, grid lines, tick lines and labels'
@@ -156,9 +217,17 @@ class FastAxisMixin(object):
             return
         renderer.open_group(__name__)
 
+        bb = []
+
         for locations, tickbars, props, label_formatter in self.iter_tick_groups():
             for t in tickbars:
                 t.draw(renderer)
+            if props._grid_on:
+                for i, val in enumerate(locations):
+                    t = self._get_gridline(val)
+                    #f = t.set_ydata if self.axis_name == 'y' else t.set_xdata
+                    #f(numpy.array(val, val))
+                    t.draw(renderer)
             if label_formatter != None:
                 label_formatter.set_locs(locations)
                 for i, val in enumerate(locations):
@@ -170,6 +239,10 @@ class FastAxisMixin(object):
                     f(val)
                     t.set_text(l)
                     t.draw(renderer)
+                    bb.append(t.get_window_extent(renderer))
+
+        self._update_label_position(bb, [])
+        self.label.draw(renderer)
 
         renderer.close_group(__name__)
 
@@ -181,6 +254,26 @@ class FastXAxis(FastAxisMixin, maxis.XAxis):
         t.set_figure(self.figure)
         t.set_transform(trans)
         return t
+
+    def _get_gridline(self, value):
+        'Get the default line2D instance'
+        # x in data coords, y in axes coords
+        verts = numpy.array(((value, 0.0), (value, 1.0)))
+        p = mpath.Path._fast_from_codes_and_verts(verts, (mpath.Path.MOVETO, mpath.Path.LINETO))
+        #l = mlines.Line2D(xdata=(0.0, 0.0), ydata=(0.0, 1.0),
+        l = mpatches.PathPatch(p, 
+                   color=rcParams['grid.color'],
+                   linestyle=cbook.ls_mapper[rcParams['grid.linestyle']],
+                   linewidth=rcParams['grid.linewidth'],
+                   alpha=rcParams['grid.alpha']
+                   )
+        #print list(l.get_path().iter_segments())
+        l.set_transform(self.axes.get_xaxis_transform(which='grid'))
+        #l.get_path()._interpolation_steps = GRIDLINE_INTERPOLATION_STEPS
+        l.set_axes(self.axes)
+        l.set_figure(self.figure)
+
+        return l
 
     def tick_props(self, major):
         props = tick_props('xtick', self.axes, major)
@@ -203,6 +296,24 @@ class FastYAxis(FastAxisMixin, maxis.YAxis):
         t.set_figure(self.figure)
         t.set_transform(trans)
         return t
+
+    def _get_gridline(self, value):
+        'Get the default line2D instance'
+        verts = numpy.array(((0.0, value), (1.0, value)))
+        p = mpath.Path._fast_from_codes_and_verts(verts, (mpath.Path.MOVETO, mpath.Path.LINETO))
+        # x in data coords, y in axes coords
+        l = mpatches.PathPatch(p, 
+                   color=rcParams['grid.color'],
+                   linestyle=cbook.ls_mapper[rcParams['grid.linestyle']],
+                   linewidth=rcParams['grid.linewidth'],
+                   alpha=rcParams['grid.alpha']
+                   )
+        l.set_transform(self.axes.get_yaxis_transform(which='grid'))
+        #l.get_path()._interpolation_steps = GRIDLINE_INTERPOLATION_STEPS
+        l.set_axes(self.axes)
+        l.set_figure(self.figure)
+
+        return l
 
     def tick_props(self, major):
         props = tick_props('ytick', self.axes, major)
