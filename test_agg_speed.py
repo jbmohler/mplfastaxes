@@ -78,6 +78,14 @@ def tickless(proj=None):
 
     return figure
 
+def large_grid(proj=None):
+    figure = Figure(figsize=(6, 6), dpi=72, facecolor=(1, 1, 1), edgecolor=(0, 0, 0))
+
+    axes = [[figure.add_subplot(20, 20, i*20+j+1) for i in range(20)] for j in range(20)]
+
+    return figure
+
+
 class Profile(object):
     def __init__(self, label):
         self.label = label
@@ -92,9 +100,13 @@ class Profile(object):
         self.pr.dump_stats(filename)
 
 def speed(func):
+    start = time.time()
     s_fig = func()
+    s_create_time = time.time() - start
     s_canvas = FigureCanvas(s_fig)
+    start = time.time()
     f_fig = func(proj='fastticks')
+    f_create_time = time.time() - start
     f_canvas = FigureCanvas(f_fig)
 
     # heat the cache or other first-run issues
@@ -120,13 +132,14 @@ def speed(func):
     f_fig.savefig(f_fname)
 
     identical = open(s_fname, 'r').read() == open(f_fname, 'r').read()
-    print '{:<10s}:  {:>5.2f} {:>5.2f} ({:>4.1f}x faster) Identical:  {}'.format(func.__name__, s_time, f_time, s_time / f_time, identical)
+    print '{:<10s}:  {:>5.2f}({:>5.2f}) {:>5.2f}({:>5.2f}) ({:>4.1f}x faster) Identical:  {}'.format(func.__name__, s_time, s_create_time, f_time, f_create_time, s_time / f_time, identical)
 
 def main():
-    print '{:<10s}:  {:>5s} {:>5s}'.format('func', 'std', 'fast')
+    print '{:<10s}:  {:>5s}({:>5s}) {:>5s}({:>5s})'.format('func', 'std', 'make', 'fast', 'make')
 
     speed(vanilla)
     speed(hexplot)
+    speed(large_grid)
     speed(log)
     #speed(tight)
     speed(manyticks)
