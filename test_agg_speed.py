@@ -21,7 +21,15 @@ def vanilla(proj=None):
 
     scat = ax.scatter(numpy.arange(POINTS), numpy.sin(numpy.arange(POINTS)))
 
-    ax.set_yticklabels(['manny', 'moe', 'jack'])
+    return figure
+
+def t_labels(proj=None):
+    figure = Figure(figsize=(6, 6), dpi=72, facecolor=(1, 1, 1), edgecolor=(0, 0, 0))
+    ax = figure.add_subplot(1, 1, 1, projection=proj)
+
+    scat = ax.scatter(numpy.arange(3), numpy.sin(numpy.arange(3)))
+
+    ax.set_xticklabels(['manny', 'moe', 'jack'])
 
     return figure
 
@@ -174,6 +182,7 @@ def main():
 
     speed(vanilla)
     speed(labeled)
+    speed(t_labels)
     speed(hexplot)
     speed(large_grid)
     speed(log)
