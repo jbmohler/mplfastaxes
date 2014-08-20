@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+*.prof
+images/*.png
+
 # C extensions
 *.so
 
@@ -51,4 +54,3 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
-

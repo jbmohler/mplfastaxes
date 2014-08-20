@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import time
 import tempfile
@@ -174,11 +175,11 @@ def speed(func):
     f_fname = os.path.join('images', '{}-fast.png'.format(func.__name__))
     f_fig.savefig(f_fname)
 
-    identical = open(s_fname, 'r').read() == open(f_fname, 'r').read()
-    print '{:<10s}:  {:>5.2f}({:>5.2f}) {:>5.2f}({:>5.2f}) ({:>4.1f}x faster) Identical:  {}'.format(func.__name__, s_time, s_create_time, f_time, f_create_time, s_time / f_time, identical)
+    identical = open(s_fname, 'rb').read() == open(f_fname, 'rb').read()
+    print('{:<10s}:  {:>5.2f}({:>5.2f}) {:>5.2f}({:>5.2f}) ({:>4.1f}x faster) Identical:  {}'.format(func.__name__, s_time, s_create_time, f_time, f_create_time, s_time / f_time, identical))
 
 def main():
-    print '{:<10s}:  {:>5s}({:>5s}) {:>5s}({:>5s})'.format('func', 'std', 'make', 'fast', 'make')
+    print('{:<10s}:  {:>5s}({:>5s}) {:>5s}({:>5s})'.format('func', 'std', 'make', 'fast', 'make'))
 
     speed(vanilla)
     speed(labeled)
